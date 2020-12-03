@@ -1,16 +1,11 @@
-# Matroid ML Challenge
+# Gender Classification via Transfer Learning
 
-Hello there! Here, you can find all the relevant information for Tasks 1 and 2 of the Matroid ML Challenge. All code was written in Google Collab due to the lack of disk space on my local computer. For completeness sake I have downloaded these notebooks as .py and files and included them in the tarball. That said, I highly suggest using the links in the sections below to access the Google Collab notebook directly as this will save much time with any required dependencies. 
-
-Note: although GPUs are available in Google Collab, per the instructions, I did not enable them during runtime. 
+Hello there! Here, we will use transfer learning to convert the face detector trained [here](http://www.robots.ox.ac.uk/~vgg/software/vgg_face/) to a gender classifier.
 
 ## Relevant Links and Resources
 - Caffe-to-Keras Convertor: <https://github.com/pierluigiferrari/caffe_weight_converter>
-- Model Conversion: <https://colab.research.google.com/drive/1N13QnNBCiaAB-A3FOn8irMoRb44mduc5?usp=sharing>
-- Transfer Learning/Gender Classification: <https://colab.research.google.com/drive/1kkXN3EMy3tU1WnXf2HEQlqdFNzXwk7IL?usp=sharing>
 
-
-## Task 1: Model Conversion
+## Task: Model Conversion
 
 To convert the VGG Face Descriptor to Tensorflow format, I used an open-source caffe-to-keras weight conversion [tool](https://github.com/pierluigiferrari/caffe_weight_converter) to extract the weights from the `VGG_FACE.caffemodel` to a .h5 file compatible with Keras. To convert a `.caffemodel` file to a Keras-compatible HDF5 file with verbose console output, run the following on the command line:
 ```c
@@ -20,15 +15,13 @@ python caffe_weight_converter.py 'desired/name/of/your/output/file/without/file/
                                  --verbose
 ```
 
-The `VGG_FACE_deploy_full.prototxt` can be found in the tarball. Note, that the `VGG_FACE_deploy_full.prototxt` is not the same prototxt file as what was provided by the paper. 
+The `VGG_FACE_deploy_full.prototxt` can be found in the repo.
 
-Once the weights have been extracted to a .h5 file compatible with Keras, it can be easily loaded into a high-level tf.Keras model with the same architecture as the VGG Face Descriptor. The Tensorflow version of the fully converted VGG Face Descriptor can be found [here](https://colab.research.google.com/drive/1N13QnNBCiaAB-A3FOn8irMoRb44mduc5?usp=sharing). The .py file of the notebook is also included in the tarball as `model_conversion.py` 
+Once the weights have been extracted to a .h5 file compatible with Keras, it can be easily loaded into a high-level tf.Keras model with the same architecture as the VGG Face Descriptor.
 
-## Task 2: Transfer Learning/Gender Classification
+## Task: Transfer Learning/Gender Classification
+Here, we will use the weights extracted from VGG_FACE to create a new convolutional neural network for gender classification. 
 
-All commented code for this task can be found [here](https://colab.research.google.com/drive/1kkXN3EMy3tU1WnXf2HEQlqdFNzXwk7IL?usp=sharing) Its corresponding .py file is included in the tarball for completeness sake as `transfer_learning_gender_classification.py`
-
-The easiest way to run the code is by running each cell of the linked Google Collab notebook after uploading the model weights included (more info included in notebook).
 ### Data Preprocessing
 The dataset was downloaded and unzipped from the following .targz link <https://s3.amazonaws.com/matroid-web/datasets/agegender_cleaned.tar.gz.>
 
@@ -51,11 +44,9 @@ test_dataset = tf.data.Dataset.from_tensor_slices((norm_images_test, labels_test
 
 
 ### Model Building
-To make use of the pre-trained VGG Face Descriptor for transfer learning, I first extract weights of the VGG Face Descriptor **without** the fully-connected classification layers into a .h5 file. This is performed just like above, except now using a modified `VGG_FACE_deploy.prototxt` file that discards the fully-connected classification layers. This modified `VGG_FACE_deploy.prototxt` file is included in the tarball as `VGG_FACE_deploy_truncated.prototxt`. With the weights extracted for the truncated model, we can rebuild its truncated architecture in Tensorflow using the high-level `tf.keras.Sequential ` module and simply load in the weights like in Task 1.  This will serve as our base model/feature extractor for transfer learning.
+To make use of the pre-trained VGG Face Descriptor for transfer learning, I first extract weights of the VGG Face Descriptor **without** the fully-connected classification layers into a .h5 file. This is performed just like above, except now using a modified `VGG_FACE_deploy.prototxt` file that discards the fully-connected classification layers. With the weights extracted for the truncated model, we can rebuild its truncated architecture in Tensorflow using the high-level `tf.keras.Sequential ` module and simply load in the weights like in the first Task.  This will serve as our base model/feature extractor for transfer learning.
 
 Once the convolution base model is created, I freeze its weights and stack a classification head on top. The classification head consists of a 2D Global Average Pooling, a 32-unit Fully-Connected layer, and the final prediction neuron. Dropout was also used after the 32-unit Fully-Connected layer to reduce overfitting. 
-
- The complete code for building the base model and the overall model is included and well documented in the Google Collab linked above. 
 
 ### Training
 Once the overall model architecture is complete, we compile it by calling
@@ -78,9 +69,7 @@ history = new_model.fit(
 )
 ```
 
- The model was trained for only 10 epochs due to the computational constraints. The weights of the trained model and its architecture are saved using the SavedModel format and included in the tarball as `weights_arch_transfer_model`.  Note, I also saved the weights and architecture using the HDF5 standard and can be found in the tarball as `weights_arch_transfer_model_h5.h5`. 
-
- The complete code for training and saving the trained model is included and documented in the Google Collab linked above. 
+ The model was trained for only 10 epochs due to the computational constraints. The weights of the trained model and its architecture are saved using the SavedModel format as `weights_arch_transfer_model`.
 
 ### Evaluation
 With a trained model, we can evalaute the test set compiled during the data preprocessing step. This can be done by calling `model.predict()` on the test dataset to recieve predictions and then using `tf.keras.metrics` on the predictions with the true labels to compute a given metric. We consider 4 main metrics for binary classification: 
